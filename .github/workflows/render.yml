@@ -1,0 +1,112 @@
+name: Render private Pragma video
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  render:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'render/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out worker request
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Restrict pull request changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
+          if [ "$changed" != "jobs/request.json" ]; then
+            echo "Render pull requests may change only jobs/request.json." >&2
+            printf '%s\n' "$changed" >&2
+            exit 65
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate request
+        id: request
+        run: node scripts/read-request.mjs jobs/request.json
+
+      - name: Check out exact private source commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.SOURCE_REPOSITORY }}
+          ref: ${{ steps.request.outputs.source_sha }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          path: private-source
+          fetch-depth: 1
+
+      - name: Install render utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg rclone
+
+      - name: Render and package privately
+        id: render
+        env:
+          SOURCE_DIR: ${{ github.workspace }}/private-source
+          RESULT_DIR: ${{ runner.temp }}/pragma-result
+          JOB_ID: ${{ steps.request.outputs.job_id }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          ELEVENLABS_API_KEYS_JSON: ${{ secrets.ELEVENLABS_API_KEYS_JSON }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: |
+          set +e
+          mkdir -p "$RESULT_DIR"
+          ./scripts/run-render.sh > "$RESULT_DIR/private-build.log" 2>&1
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            python3 - "$RESULT_DIR/status.json" "$JOB_ID" "$SOURCE_SHA" "$code" <<'PY'
+          import json
+          import sys
+          from datetime import datetime, timezone
+          path, job_id, source_sha, code = sys.argv[1:]
+          with open(path, "w", encoding="utf-8") as handle:
+              json.dump({
+                  "status": "failed",
+                  "jobId": job_id,
+                  "sourceSha": source_sha,
+                  "exitCode": int(code),
+                  "completedAt": datetime.now(timezone.utc).isoformat(),
+              }, handle, indent=2)
+              handle.write("\n")
+          PY
+          fi
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          echo "Private render process finished with exit code $code."
+          exit 0
+
+      - name: Upload private result package
+        if: always()
+        env:
+          RESULT_DIR: ${{ runner.temp }}/pragma-result
+          JOB_ID: ${{ steps.request.outputs.job_id }}
+          RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
+          PRAGMA_RENDER_ROOT_ID: ${{ secrets.PRAGMA_RENDER_ROOT_ID }}
+        run: ./scripts/upload-drive.sh
+
+      - name: Report render failure
+        if: steps.render.outputs.exit_code != '0'
+        env:
+          EXIT_CODE: ${{ steps.render.outputs.exit_code }}
+        run: |
+          echo "Private render failed with exit code $EXIT_CODE. Inspect private-build.log in Drive." >&2
+          exit "$EXIT_CODE"

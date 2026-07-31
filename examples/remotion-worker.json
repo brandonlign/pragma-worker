@@ -1,0 +1,9 @@
+{
+  "entryPoint": "src/index.ts",
+  "compositionId": "PragmaStarter",
+  "outputName": "pragma-starter",
+  "installCommand": "npm install --no-audit --no-fund",
+  "prepareCommand": "true",
+  "checkCommand": "npm run lint",
+  "crf": 20
+}
