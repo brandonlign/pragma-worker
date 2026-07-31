@@ -2,7 +2,7 @@
 
 ## 1. Private source
 
-The private repository is `brandonlign/pragma-video`. It already contains `remotion-worker.json` and the starter composition.
+The private repository is `brandonlign/pragma-video`. It contains `remotion-worker.json` and the starter composition.
 
 ## 2. Source token
 
@@ -35,17 +35,11 @@ base64 -i "$HOME/.config/rclone/pragma-worker.conf" | tr -d '\n' | pbcopy
 
 Add the clipboard value as `RCLONE_CONFIG_B64`.
 
-### First successful upload
+### Render destination
 
-A `drive.file` credential cannot automatically access the browser-created `Pragma Production` folder. On its first successful upload, the worker creates `Pragma-Renders` at Drive root because that folder is owned by the restricted credential.
+On its first successful upload, the restricted credential creates `Pragma-Renders` at Drive root. Future jobs automatically reuse that folder, so no folder move or additional secret is required.
 
-After that first upload:
-
-1. Move the worker-created `Pragma-Renders` folder into the existing `Pragma Production` folder.
-2. Copy the moved folder's ID from its Drive URL.
-3. Add that ID as the repository secret `PRAGMA_RENDER_ROOT_ID`.
-
-The worker then addresses the same restricted folder directly by ID on later runs.
+`PRAGMA_RENDER_ROOT_ID` remains supported as an optional advanced override when the target folder is already accessible to the same restricted credential.
 
 ## 4. Optional narration
 
