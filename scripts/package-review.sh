@@ -18,34 +18,20 @@ ffmpeg -hide_banner -loglevel error -y -i "$FINAL_VIDEO" \
   -vf "scale=540:-2" -c:v libx264 -preset medium -crf 28 -an \
   "$RESULT_DIR/review.mp4"
 
-python3 - "$duration" "$RESULT_DIR" <<'PY'
-import subprocess
+mapfile -t timestamps < <(python3 - "$duration" <<'PY'
 import sys
-from pathlib import Path
 
 duration = float(sys.argv[1])
-result = Path(sys.argv[2])
-for index, ratio in enumerate((0.08, 0.28, 0.50, 0.72, 0.92), start=1):
-    timestamp = max(0.0, duration * ratio)
-    target = result / "keyframes" / f"frame-{index:02d}.jpg"
-    subprocess.run([
-        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-        "-ss", f"{timestamp:.3f}", "-i", str(result / Path(sys.argv[2]).name),
-    ], check=False)
+for ratio in (0.08, 0.28, 0.50, 0.72, 0.92):
+    print(f"{max(0.0, duration * ratio):.3f}")
 PY
+)
 
-for index in 1 2 3 4 5; do
-  ratio="$(python3 - "$index" <<'PY'
-import sys
-print((0.08, 0.28, 0.50, 0.72, 0.92)[int(sys.argv[1]) - 1])
-PY
-)"
-  timestamp="$(python3 - "$duration" "$ratio" <<'PY'
-import sys
-print(max(0.0, float(sys.argv[1]) * float(sys.argv[2])))
-PY
-)"
-  ffmpeg -hide_banner -loglevel error -y -ss "$timestamp" -i "$FINAL_VIDEO" -frames:v 1 -q:v 2 "$RESULT_DIR/keyframes/frame-0${index}.jpg"
+for offset in "${!timestamps[@]}"; do
+  index=$((offset + 1))
+  ffmpeg -hide_banner -loglevel error -y \
+    -ss "${timestamps[$offset]}" -i "$FINAL_VIDEO" \
+    -frames:v 1 -q:v 2 "$RESULT_DIR/keyframes/frame-0${index}.jpg"
 done
 
 ffmpeg -hide_banner -loglevel error -y -i "$FINAL_VIDEO" \
