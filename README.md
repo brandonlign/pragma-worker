@@ -24,6 +24,6 @@ Optional narration secrets:
 - `ELEVENLABS_API_KEYS_JSON`
 - `ELEVENLABS_API_KEY`
 
-The restricted Drive credential maintains its own root-level `Pragma-Renders` folder. `PRAGMA_RENDER_ROOT_ID` remains supported as an optional override, but normal setup does not require it.
+The restricted Drive credential created `Pragma-Renders` at Drive root during initial setup. Move that folder once into `Pragma Production`; its Drive ID stays unchanged, and the worker is pinned to that same folder ID for all future uploads. `PRAGMA_RENDER_ROOT_ID` remains supported as an optional override.
 
 See `docs/SETUP.md` and `SECURITY.md`.
