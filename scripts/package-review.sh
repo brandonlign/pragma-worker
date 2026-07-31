@@ -15,7 +15,8 @@ if [ -z "$duration" ]; then
 fi
 
 ffmpeg -hide_banner -loglevel error -y -i "$FINAL_VIDEO" \
-  -vf "scale=540:-2" -c:v libx264 -preset medium -crf 28 -an \
+  -vf "scale=540:-2" -c:v libx264 -preset medium -crf 28 \
+  -c:a aac -b:a 128k -movflags +faststart \
   "$RESULT_DIR/review.mp4"
 
 mapfile -t timestamps < <(python3 - "$duration" <<'PY'
