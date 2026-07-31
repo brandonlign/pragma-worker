@@ -5,6 +5,11 @@ set -euo pipefail
 : "${JOB_ID:?JOB_ID is required}"
 : "${RCLONE_CONFIG_B64:?RCLONE_CONFIG_B64 is required}"
 
+# This folder ID is only a locator, not a credential. It keeps future uploads
+# pointed at the same worker-created Pragma-Renders folder even after that
+# folder is moved under Pragma Production in Drive.
+DEFAULT_PRAGMA_RENDER_ROOT_ID="13TgY0EdfH2R4RIuB39FzAX29pLTiPPrH"
+
 CONFIG_FILE="$(mktemp)"
 trap 'rm -f "$CONFIG_FILE"' EXIT
 printf '%s' "$RCLONE_CONFIG_B64" | base64 --decode > "$CONFIG_FILE"
@@ -41,27 +46,8 @@ os.chmod(path, 0o600)
 PY
 }
 
-resolve_root_id() {
-  rclone lsjson gdrive: --config "$CONFIG_FILE" --dirs-only --max-depth 1 --log-level ERROR | \
-    python3 -c '
-import json, sys
-name = "Pragma-Renders"
-items = json.load(sys.stdin)
-matches = [item for item in items if item.get("Name") == name and item.get("IsDir")]
-if len(matches) != 1:
-    print(f"Expected exactly one worker-created {name} folder; found {len(matches)}.", file=sys.stderr)
-    raise SystemExit(65)
-print(matches[0]["ID"])
-'
-}
-
-if [ -n "${PRAGMA_RENDER_ROOT_ID:-}" ]; then
-  set_root_folder "$PRAGMA_RENDER_ROOT_ID"
-else
-  rclone mkdir gdrive:Pragma-Renders --config "$CONFIG_FILE" --log-level ERROR
-  root_id="$(resolve_root_id)"
-  set_root_folder "$root_id"
-fi
+render_root_id="${PRAGMA_RENDER_ROOT_ID:-$DEFAULT_PRAGMA_RENDER_ROOT_ID}"
+set_root_folder "$render_root_id"
 
 rclone mkdir "gdrive:$JOB_ID" --config "$CONFIG_FILE" --log-level ERROR
 rclone copy "$RESULT_DIR" "gdrive:$JOB_ID" \
