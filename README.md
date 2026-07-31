@@ -18,11 +18,12 @@ The public repository contains only rendering, validation, review packaging, and
 - `SOURCE_REPOSITORY`
 - `SOURCE_REPO_TOKEN`
 - `RCLONE_CONFIG_B64`
-- `PRAGMA_RENDER_ROOT_ID` after the worker-created render folder is moved under the production folder
 
 Optional narration secrets:
 
 - `ELEVENLABS_API_KEYS_JSON`
 - `ELEVENLABS_API_KEY`
+
+The restricted Drive credential maintains its own root-level `Pragma-Renders` folder. `PRAGMA_RENDER_ROOT_ID` remains supported as an optional override, but normal setup does not require it.
 
 See `docs/SETUP.md` and `SECURITY.md`.
