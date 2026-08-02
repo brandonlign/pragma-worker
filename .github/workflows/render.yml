@@ -68,6 +68,8 @@ jobs:
           SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
           ELEVENLABS_API_KEYS_JSON: ${{ secrets.ELEVENLABS_API_KEYS_JSON }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
+          PRAGMA_RENDER_ROOT_ID: ${{ secrets.PRAGMA_RENDER_ROOT_ID }}
         run: |
           set +e
           mkdir -p "$RESULT_DIR"
