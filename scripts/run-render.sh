@@ -25,6 +25,9 @@ CHECK_COMMAND="$(json_field checkCommand)"
 CRF="$(json_field crf)"
 FINAL_VIDEO="$RESULT_DIR/${OUTPUT_NAME}.mp4"
 
+CONFIG_JSON="$CONFIG_JSON" SOURCE_DIR="$SOURCE_DIR" \
+  bash "$WORKER_ROOT/scripts/reuse-drive-files.sh"
+
 cd "$SOURCE_DIR"
 set +x
 bash -o pipefail -c "$INSTALL_COMMAND"
